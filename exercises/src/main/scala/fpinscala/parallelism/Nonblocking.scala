@@ -30,10 +30,10 @@ object Nonblocking {
 
     /** A non-strict version of `unit` */
     def delay[A](a: => A): Par[A] =
-      es => new Future[A] {
-        def apply(cb: A => Unit): Unit =
-          cb(a)
-      }
+    es => new Future[A] {
+      def apply(cb: A => Unit): Unit =
+        cb(a)
+    }
 
     def fork[A](a: => Par[A]): Par[A] =
       es => new Future[A] {
@@ -42,19 +42,19 @@ object Nonblocking {
       }
 
     /**
-     * Helper function for constructing `Par` values out of calls to non-blocking continuation-passing-style APIs.
-     * This will come in handy in Chapter 13.
-     */
+      * Helper function for constructing `Par` values out of calls to non-blocking continuation-passing-style APIs.
+      * This will come in handy in Chapter 13.
+      */
     def async[A](f: (A => Unit) => Unit): Par[A] = es => new Future[A] {
       def apply(k: A => Unit) = f(k)
     }
 
     /**
-     * Helper function, for evaluating an action
-     * asynchronously, using the given `ExecutorService`.
-     */
+      * Helper function, for evaluating an action
+      * asynchronously, using the given `ExecutorService`.
+      */
     def eval(es: ExecutorService)(r: => Unit): Unit =
-      es.submit(new Callable[Unit] { def call = r })
+    es.submit(new Callable[Unit] { def call = r })
 
 
     def map2[A,B,C](p: Par[A], p2: Par[B])(f: (A,B) => C): Par[C] =
@@ -77,10 +77,10 @@ object Nonblocking {
 
     // specialized version of `map`
     def map[A,B](p: Par[A])(f: A => B): Par[B] =
-      es => new Future[B] {
-        def apply(cb: B => Unit): Unit =
-          p(es)(a => eval(es) { cb(f(a)) })
-      }
+    es => new Future[B] {
+      def apply(cb: B => Unit): Unit =
+        p(es)(a => eval(es) { cb(f(a)) })
+    }
 
     def lazyUnit[A](a: => A): Par[A] =
       fork(unit(a))
@@ -123,13 +123,13 @@ object Nonblocking {
      * about `t(es)`? What about `t(es)(cb)`?
      */
     def choice[A](p: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] =
-      es => new Future[A] {
-        def apply(cb: A => Unit): Unit =
-          p(es) { b =>
-            if (b) eval(es) { t(es)(cb) }
-            else eval(es) { f(es)(cb) }
-          }
-      }
+    es => new Future[A] {
+      def apply(cb: A => Unit): Unit =
+        p(es) { b =>
+          if (b) eval(es) { t(es)(cb) }
+          else eval(es) { f(es)(cb) }
+        }
+    }
 
     def choiceN[A](p: Par[Int])(ps: List[Par[A]]): Par[A] = ???
 
@@ -141,7 +141,7 @@ object Nonblocking {
 
     // see `Nonblocking.scala` answers file. This function is usually called something else!
     def chooser[A,B](p: Par[A])(f: A => Par[B]): Par[B] =
-      ???
+    ???
 
     def flatMap[A,B](p: Par[A])(f: A => Par[B]): Par[B] =
       ???
