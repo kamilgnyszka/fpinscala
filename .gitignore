@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 *.un~
 *.swp
 tags
@@ -10,3 +11,7 @@ project.vim
 .project
 .classpath
 .metadata/
+=======
+*.class
+*.log
+>>>>>>> f1a310b1c159b8336063aea00e72cb443b712caa
