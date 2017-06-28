@@ -29,10 +29,20 @@ object Par {
       def call = a(es).get
     })
 
+  def lazyUnit[A](a: => A): Par[A] = fork(unit(a))
+
+  def asyncF[A,B] (f: A => B): A => Par[B] = {a => lazyUnit(f(a))}
+
+  def sequence[A] (ps: List[Par[A]]): Par[List[A]] = ??? // asyncF(ps.fold((a,b) => ))
+
   def map[A,B](pa: Par[A])(f: A => B): Par[B] =
     map2(pa, unit(()))((a,_) => f(a))
 
   def sortPar(parList: Par[List[Int]]) = map(parList)(_.sorted)
+
+  def parFilter[A](as: List[A])(f: A => Boolean) : Par[List[A]] = ??? //lazyUnit(as.filter(f))
+
+  def choiceN[A](n: Par[Int])(choices: List[Par[A]]) : Par[A] = choices(n)
 
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean =
     p(e).get == p2(e).get
@@ -63,5 +73,4 @@ object Examples {
       val (l,r) = ints.splitAt(ints.length/2) // Divide the sequence in half using the `splitAt` function.
       sum(l) + sum(r) // Recursively sum both halves and add the results together.
     }
-
 }
