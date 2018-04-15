@@ -42,7 +42,11 @@ object Par {
 
   def parFilter[A](as: List[A])(f: A => Boolean) : Par[List[A]] = ??? //lazyUnit(as.filter(f))
 
-  def choiceN[A](n: Par[Int])(choices: List[Par[A]]) : Par[A] = choices(n)
+  def choiceN[A](n: Par[Int])(choices: List[Par[A]]) : Par[A] =
+    es => {
+    val ind = run(es)(n).get // Full source files
+    run(es)(choices(ind))
+  }
 
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean =
     p(e).get == p2(e).get

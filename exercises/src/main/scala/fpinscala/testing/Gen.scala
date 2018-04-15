@@ -1,10 +1,13 @@
 package fpinscala.testing
 
-import fpinscala.state._
-import Prop._
-import Gen._
-import fpinscala.laziness.Stream
 
+import fpinscala.laziness.Stream
+import fpinscala.state._
+import fpinscala.parallelism._
+import fpinscala.parallelism.Par.Par
+import Gen._
+import Prop._
+import java.util.concurrent.{Executors,ExecutorService}
 import language.postfixOps
 import language.implicitConversions
 
@@ -110,7 +113,7 @@ object Prop {
   }
 }
 
-case class Gen[A](sample: State[RNG,A]){
+case class Gen[+A](sample: State[RNG,A]){
   def flatMap[B](f: A => Gen[B]): Gen[B] = {
     Gen(sample).flatMap(f)
   }
@@ -159,8 +162,7 @@ object Gen {
   def listOf1[A](g: Gen[A]): SGen[List[A]] = SGen(n => g.listOfN(n max 1))
 }
 
-case class SGen[+A] (forSize: Int => Gen[A]) {
-  def apply[A](n: Int): Gen[A] = forSize(n)
-
+case class SGen[+A](g: Int => Gen[A]) {
+  def apply(n: Int): Gen[A] = g(n)
 }
 
