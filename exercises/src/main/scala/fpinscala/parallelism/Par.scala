@@ -48,6 +48,13 @@ object Par {
     run(es)(choices(ind))
   }
 
+  /* `chooser` is usually called `flatMap` or `bind`. */
+  def flatMap[A,B](p: Par[A])(choices: A => Par[B]): Par[B] =
+    es => {
+      val k = run(es)(p).get
+      run(es)(choices(k))
+    }
+
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean =
     p(e).get == p2(e).get
 

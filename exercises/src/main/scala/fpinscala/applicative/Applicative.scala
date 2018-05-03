@@ -3,8 +3,10 @@ package applicative
 
 import monads.Functor
 import state._
-import StateUtil._ // defined at bottom of this file
+import StateUtil._
+import fpinscala.monoids.Monoid.Foldable
 import monoids._
+
 import language.higherKinds
 import language.implicitConversions
 
@@ -19,11 +21,17 @@ trait Applicative[F[_]] extends Functor[F] {
   def map[A,B](fa: F[A])(f: A => B): F[B] =
     apply(unit(f))(fa)
 
-  def sequence[A](fas: List[F[A]]): F[List[A]] = ???
+  def sequence[A](fas: List[F[A]]): F[List[A]] = {
+    traverse(fas)(x => x)
+  }
 
-  def traverse[A,B](as: List[A])(f: A => F[B]): F[List[B]] = ???
+  def traverse[A,B](as: List[A])(f: A => F[B]): F[List[B]] = {
+    as.foldRight(unit(List[B]()))((a,fbs) => map2(f(a),fbs)(_ :: _))
+  }
 
-  def replicateM[A](n: Int, fa: F[A]): F[List[A]] = ???
+  def replicateM[A](n: Int, fa: F[A]): F[List[A]] = {
+    sequence(List.fill(n)(fa))
+  }
 
   def factor[A,B](fa: F[A], fb: F[B]): F[(A,B)] = ???
 
@@ -49,7 +57,14 @@ trait Monad[F[_]] extends Applicative[F] {
 }
 
 object Monad {
-  def eitherMonad[E]: Monad[({type f[x] = Either[E, x]})#f] = ???
+  def eitherMonad[E]: Monad[({type f[x] = Either[E, x]})#f] = new Monad[({type f[x] = Either[E, x]})#f] {
+    def unit[A](a: => A): Either[E, A] = Right(a)
+    override def flatMap[A,B](eea: Either[E, A])(f: A => Either[E, B]) = eea match {
+      case Right(a) => f(a)
+      case Left(e) => Left(e)
+    }
+  }
+
 
   def stateMonad[S] = new Monad[({type f[x] = State[S, x]})#f] {
     def unit[A](a: => A): State[S, A] = State(s => (a, s))
