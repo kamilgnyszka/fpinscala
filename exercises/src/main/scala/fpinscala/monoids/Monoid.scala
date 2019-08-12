@@ -1,14 +1,14 @@
 package fpinscala.monoids
 
-import fpinscala.monoids.Monoid.mapMergeMonoid
-import fpinscala.parallelism.Nonblocking._
-import fpinscala.parallelism.Nonblocking.Par.toParOps
 
-import language.higherKinds
+import fpinscala.parallelism.Nonblocking._
+
+import scala.language.higherKinds
 
 
 trait Monoid[A] {
   def op(a1: A, a2: A): A
+
   def zero: A
 }
 
@@ -108,82 +108,82 @@ object Monoid {
       val (l, r) = as.splitAt(as.length / 2)
       m.op(foldMapV(l, m)(f), foldMapV(r, m)(f))
     }
-
-    def ordered(ints: IndexedSeq[Int]): Boolean =
-      ???
-
-    sealed trait WC
-    case class Stub(chars: String) extends WC
-    case class Part(lStub: String, words: Int, rStub: String) extends WC
-
-    def par[A](m: Monoid[A]): Monoid[Par[A]] =
-      ???
-
-    def parFoldMap[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] =
-      ???
-
-    val wcMonoid: Monoid[WC] = new Monoid[WC] {
-      override def op(a1: WC, a2: WC): WC = (a1, a2) match {
-        case (Stub(a), Stub(b)) => Stub(a + b)
-        case (Stub(a), Part(l, i, r)) => Part(a + l, i, r)
-        case (Part(l, i, r), Stub(a)) => Part(l, i, r + a)
-        case (Part(l1, i1, r1), Part(l2, i2, r2)) => Part(l1, i1 + i2 + (if ((r1 + l2).isEmpty) 0 else 1), r2)
-      }
-
-      override def zero: WC = Stub("")
-    }
-
-    def count(s: String): Int = {
-      // A single character's count. Whitespace does not count,
-      // and non-whitespace starts a new Stub.
-      def wc(c: Char): WC =
-        if (c.isWhitespace)
-          Part("", 0, "")
-        else
-          Stub(c.toString)
-
-      // `unstub(s)` is 0 if `s` is empty, otherwise 1.
-      def unstub(s: String) = s.length min 1
-
-      foldMapV(s.toIndexedSeq, wcMonoid)(wc) match {
-        case Stub(s) => unstub(s)
-        case Part(l, w, r) => unstub(l) + w + unstub(r)
-      }
-    }
-
-    def productMonoid[A, B](A: Monoid[A], B: Monoid[B]): Monoid[(A, B)] =
-      new Monoid[(A, B)] {
-        override def op(a1: (A, B), a2: (A, B)): (A, B) = (A.op(a1._1,a2._1),B.op(a1._2,a2._2))
-
-        override def zero: (A, B) = (A.zero,B.zero)
-      }
-
-    def functionMonoid[A, B](B: Monoid[B]): Monoid[A => B] =
-      new Monoid[A => B] {
-        override def op(a1: A => B, a2: A => B): A => B = (x: A) => B.op(a1(x),a2(x))
-
-        override def zero: A => B = _ => B.zero
-      }
-
-    def mapMergeMonoid[K, V](V: Monoid[V]): Monoid[Map[K, V]] =
-      new Monoid[Map[K, V]] {
-        override def op(a1: Map[K, V], a2: Map[K, V]): Map[K, V] = {
-          (a1.keySet ++ a2.keySet).foldLeft(zero) {
-            (acc,k) => acc.updated(k, V.op(a1.getOrElse(k,V.zero),
-              a2.getOrElse(k,V.zero)))
-          }
-        }
-
-        override def zero: Map[K, V] = Map[K,V]()
-      }
-
-    def bag[A](as: IndexedSeq[A]): Map[A, Int] =
-      foldMapV(as, mapMergeMonoid[A, Int](intAddition))((a: A) => Map(a -> 1))
   }
 
-  trait Foldable[F[_]] {
+  def ordered(ints: IndexedSeq[Int]): Boolean =
+    ???
 
-    import Monoid._
+  sealed trait WC
+
+  case class Stub(chars: String) extends WC
+
+  case class Part(lStub: String, words: Int, rStub: String) extends WC
+
+  def par[A](m: Monoid[A]): Monoid[Par[A]] =
+    ???
+
+  def parFoldMap[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] =
+    ???
+
+  val wcMonoid: Monoid[WC] = new Monoid[WC] {
+    override def op(a1: WC, a2: WC): WC = (a1, a2) match {
+      case (Stub(a), Stub(b)) => Stub(a + b)
+      case (Stub(a), Part(l, i, r)) => Part(a + l, i, r)
+      case (Part(l, i, r), Stub(a)) => Part(l, i, r + a)
+      case (Part(l1, i1, r1), Part(l2, i2, r2)) => Part(l1, i1 + i2 + (if ((r1 + l2).isEmpty) 0 else 1), r2)
+    }
+
+    override def zero: WC = Stub("")
+  }
+
+  def count(s: String): Int = {
+    // A single character's count. Whitespace does not count,
+    // and non-whitespace starts a new Stub.
+    def wc(c: Char): WC =
+      if (c.isWhitespace)
+        Part("", 0, "")
+      else
+        Stub(c.toString)
+
+    // `unstub(s)` is 0 if `s` is empty, otherwise 1.
+    def unstub(s: String) = s.length min 1
+
+    foldMapV(s.toIndexedSeq, wcMonoid)(wc) match {
+      case Stub(s) => unstub(s)
+      case Part(l, w, r) => unstub(l) + w + unstub(r)
+    }
+  }
+
+  def productMonoid[A, B](A: Monoid[A], B: Monoid[B]): Monoid[(A, B)] =
+    new Monoid[(A, B)] {
+      override def op(a1: (A, B), a2: (A, B)): (A, B) = (A.op(a1._1, a2._1), B.op(a1._2, a2._2))
+
+      override def zero: (A, B) = (A.zero, B.zero)
+    }
+
+  def functionMonoid[A, B](B: Monoid[B]): Monoid[A => B] =
+    new Monoid[A => B] {
+      override def op(a1: A => B, a2: A => B): A => B = (x: A) => B.op(a1(x), a2(x))
+
+      override def zero: A => B = _ => B.zero
+    }
+
+  def mapMergeMonoid[K, V](V: Monoid[V]): Monoid[Map[K, V]] =
+    new Monoid[Map[K, V]] {
+      override def op(a1: Map[K, V], a2: Map[K, V]): Map[K, V] = {
+        (a1.keySet ++ a2.keySet).foldLeft(zero) {
+          (acc, k) =>
+            acc.updated(k, V.op(a1.getOrElse(k, V.zero),
+              a2.getOrElse(k, V.zero)))
+        }
+      }
+
+      override def zero: Map[K, V] = Map[K, V]()
+    }
+
+  def bag[A](as: IndexedSeq[A]): Map[A, Int] = ???
+
+  trait Foldable[F[_]] {
 
     def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B =
       foldMap(as)(f.curried)(endoMonoid[B])(z)
@@ -216,16 +216,15 @@ object Monoid {
 
   object IndexedSeqFoldable extends Foldable[IndexedSeq] {
 
-    import Monoid._
-
     override def foldRight[A, B](as: IndexedSeq[A])(z: B)(f: (A, B) => B) =
       as.foldRight(z)(f)
 
     override def foldLeft[A, B](as: IndexedSeq[A])(z: B)(f: (B, A) => B) =
       as.foldLeft(z)(f)
 
-    override def foldMap[A, B](as: IndexedSeq[A])(f: A => B)(mb: Monoid[B]): B =
+    override def foldMap[A, B](as: IndexedSeq[A])(f: A => B)(mb: Monoid[B]): B = {
       foldMapV(as, mb)(f)
+    }
   }
 
   object StreamFoldable extends Foldable[Stream] {
@@ -271,5 +270,6 @@ object Monoid {
       case Some(a) => f(a, z)
     }
   }
+
 }
 
